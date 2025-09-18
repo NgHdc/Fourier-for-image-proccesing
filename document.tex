@@ -1,0 +1,753 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% --- PREAMBLE ---
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[12pt, a4paper]{article}
+
+% --- GÓI THƯ VIỆN CẦN THIẾT ---
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{times} % Sử dụng font Times New Roman
+\usepackage{pgffor} % Gói thư viện cho vòng lặp
+
+% --- CẤU HÌNH CHO HYPERLINK ---
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue,
+	filecolor=magenta,      
+	urlcolor=cyan,
+}
+
+% --- CẤU HÌNH CHO LISTINGS (CODE) ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+	backgroundcolor=\color{backcolour},   
+	commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\tiny\color{codegray},
+	stringstyle=\color{codepurple},
+	basicstyle=\footnotesize\ttfamily,
+	breakatwhitespace=false,         
+	breaklines=true,                 
+	captionpos=b,                    
+	keepspaces=true,                 
+	numbers=left,                    
+	numbersep=5pt,                  
+	showspaces=false,                
+	showstringspaces=false,
+	showtabs=false,                  
+	tabsize=2
+}
+\lstset{style=mystyle}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% --- NỘI DUNG TÀI LIỆU ---
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+	
+	% --- TRANG BÌA ---
+	\begin{titlepage}
+		\centering
+		\vspace*{1cm}
+
+		\vspace{3cm}
+		{\Huge\bfseries BÁO CÁO BÀI TẬP \par}
+		\vspace{1cm}
+	
+		\vspace{1.5cm}
+	
+		\vspace{0.5cm}
+		{\LARGE\bfseries Biến đổi Fourier để lọc ảnh nhiễu\par}
+		\vspace{2cm}
+		\begin{flushleft}
+			\large
+			\begin{tabular}{ll}
+				\textbf{Sinh viên thực hiện} & : Nguyễn Đức Hiếu \\
+			
+			\end{tabular}
+		\end{flushleft}
+		\vspace*{\fill}
+		{\large Hà Nội, tháng 9 năm 2025\par}
+	\end{titlepage}
+	
+	\tableofcontents
+	\newpage
+	\listoffigures
+	\newpage
+	
+	% --- SECTION 1: GIỚI THIỆU ---
+	\section{Giới thiệu }
+	Trong thực tế, ảnh kỹ thuật số thường bị nhiễu do nhiều nguyên nhân như cảm biến máy ảnh, điều kiện ánh sáng yếu. Nhiễu làm giảm chất lượng ảnh và ảnh hưởng đến các bước xử lý sau này. Vì vậy, khử nhiễu là một bài toán quan trọng trong xử lý ảnh.
+	
+	Biến đổi Fourier là một công cụ mạnh giúp chuyển ảnh từ miền không gian sang miền tần số. Ở miền tần số, ta có thể dễ dàng phân biệt đâu là thông tin chính của ảnh (tần số thấp) và đâu là chi tiết, nhiễu (tần số cao). Dựa vào đó, ta có thể xây dựng các bộ lọc để loại bỏ nhiễu.
+	
+	Mục tiêu của bài tập này là:
+	\begin{enumerate}
+		\item Tìm hiểu về Biến đổi Fourier và cách ứng dụng nó để lọc ảnh.
+		\item Viết chương trình Python để hiện thực hóa 4 loại bộ lọc tần số:
+		\begin{itemize}
+			\item Lọc thông thấp (Low-pass)
+			\item Lọc thông cao (High-pass)
+			\item Lọc thông dải (Band-pass)
+			\item Lọc chặn dải (Band-stop)
+		\end{itemize}
+		\item Áp dụng các bộ lọc này lên bộ dữ liệu ảnh nhiễu thực tế DND (Darmstadt Noise Dataset) \cite{plotz2017benchmark} để xem kết quả.
+		\item So sánh và nhận xét về hiệu quả của từng bộ lọc.
+	\end{enumerate}
+	
+	% --- SECTION 2: CƠ SỞ LÝ THUYẾT ---
+	% --- SECTION 2: CƠ SỞ LÝ THUYẾT ---
+	\section{Cơ sở lý thuyết}
+	\subsection{Biến đổi Fourier 2D}
+	Lý thuyết về Biến đổi Fourier và ứng dụng trong xử lý ảnh được tham khảo chủ yếu từ tài liệu \cite{gonzalez2018digital}. Một ảnh $f(x, y)$ kích thước $M \times N$ có thể được chuyển sang miền tần số bằng Biến đổi Fourier Rời rạc (DFT):
+	\begin{equation}
+		F(u, v) = \sum_{x=0}^{M-1} \sum_{y=0}^{N-1} f(x, y) e^{-j2\pi(\frac{ux}{M} + \frac{vy}{N})}
+	\end{equation}
+	Kết quả $F(u, v)$ là một ma trận các số phức, gọi là phổ tần số. Điểm $F(0,0)$ ở trung tâm (sau khi dịch chuyển) đại diện cho độ sáng trung bình của ảnh.
+	
+	Để chuyển ngược từ miền tần số về lại ảnh, ta dùng Biến đổi Fourier Ngược (IDFT):
+	\begin{equation}
+		f(x, y) = \frac{1}{MN} \sum_{u=0}^{M-1} \sum_{v=0}^{N-1} F(u, v) e^{j2\pi(\frac{ux}{M} + \frac{vy}{N})}
+	\end{equation}
+	
+	\subsection{Nguyên lý lọc ảnh trong miền tần số}
+	Việc lọc ảnh được thực hiện bằng một phép nhân đơn giản trong miền tần số:
+	\begin{equation}
+		G(u, v) = H(u, v) \cdot F(u, v)
+	\end{equation}
+	Trong đó $F(u, v)$ là phổ của ảnh gốc và $H(u, v)$ là một "mặt nạ" lọc. Cuối cùng, ta áp dụng IDFT lên $G(u, v)$ để thu được ảnh kết quả.
+	
+	\subsection{Hiện thực hóa các bộ lọc (Mã giả)}
+	Dưới đây là mã giả mô tả thuật toán chung và cách tạo mặt nạ $H(u,v)$ cho từng loại bộ lọc.
+	
+	\begin{lstlisting}[language=Python, caption={Thuật toán lọc Fourier tổng quát.}, label={lst:general_fourier}]
+		FUNCTION loc_anh_fourier(anh_goc, mat_na):
+		// Buoc 1: Ap dung FFT va dich chuyen vao trung tam
+		pho_tan_so = dich_chuyen_fft(fft(anh_goc))
+		
+		// Buoc 2: Nhan pho tan so voi mat na
+		pho_da_loc = pho_tan_so * mat_na
+		
+		// Buoc 3: Dich chuyen nguoc va ap dung IFFT
+		anh_ket_qua = ifft(dich_chuyen_nguoc_fft(pho_da_loc))
+		
+		RETURN anh_ket_qua
+		END FUNCTION
+	\end{lstlisting}
+	
+	\subsubsection{Lọc thông thấp (Low-pass Filter)}
+	\textbf{Mục đích:} Làm mờ và khử nhiễu bằng cách chỉ giữ lại các tần số thấp.
+	\begin{lstlisting}[language=Python, caption={Mã giả tạo mặt nạ Lọc thông thấp.}, label={lst:lpf}]
+		FUNCTION tao_mat_na_thong_thap(chieu_cao, chieu_rong, ban_kinh):
+		// Tao mot mat na den (toan so 0)
+		mat_na = tao_ma_tran_den(chieu_cao, chieu_rong)
+		
+		// Tim toa do trung tam
+		tam_x = chieu_rong / 2
+		tam_y = chieu_cao / 2
+		
+		// Ve mot hinh tron trang (gia tri 1) tai trung tam
+		ve_hinh_tron(mat_na, tam_x, tam_y, ban_kinh, mau_sac=1, do_day=-1)
+		
+		RETURN mat_na
+		END FUNCTION
+	\end{lstlisting}
+	
+	\subsubsection{Lọc thông cao (High-pass Filter)}
+	\textbf{Mục đích:} Làm sắc nét và phát hiện cạnh bằng cách chỉ giữ lại các tần số cao.
+	\begin{lstlisting}[language=Python, caption={Mã giả tạo mặt nạ Lọc thông cao.}, label={lst:hpf}]
+		FUNCTION tao_mat_na_thong_cao(chieu_cao, chieu_rong, ban_kinh):
+		// Tao mot mat na trang (toan so 1)
+		mat_na = tao_ma_tran_trang(chieu_cao, chieu_rong)
+		
+		// Tim toa do trung tam
+		tam_x = chieu_rong / 2
+		tam_y = chieu_cao / 2
+		
+		// Ve mot hinh tron den (gia tri 0) tai trung tam
+		ve_hinh_tron(mat_na, tam_x, tam_y, ban_kinh, mau_sac=0, do_day=-1)
+		
+		RETURN mat_na
+		END FUNCTION
+	\end{lstlisting}
+	
+	\subsubsection{Lọc thông dải (Band-pass Filter)}
+	\textbf{Mục đích:} Giữ lại một dải tần số trung bình, hữu ích cho việc phân tích kết cấu (texture).
+	\begin{lstlisting}[language=Python, caption={Mã giả tạo mặt nạ Lọc thông dải.}, label={lst:bpf}]
+		FUNCTION tao_mat_na_thong_dai(chieu_cao, chieu_rong, bk_trong, bk_ngoai):
+		// Tao mot mat na den (toan so 0)
+		mat_na = tao_ma_tran_den(chieu_cao, chieu_rong)
+		
+		// Tim toa do trung tam
+		tam_x = chieu_rong / 2
+		tam_y = chieu_cao / 2
+		
+		// Ve mot hinh tron trang lon ben ngoai
+		ve_hinh_tron(mat_na, tam_x, tam_y, bk_ngoai, mau_sac=1, do_day=-1)
+		
+		// Ve mot hinh tron den nho hon ben trong de tao thanh vanh khan
+		ve_hinh_tron(mat_na, tam_x, tam_y, bk_trong, mau_sac=0, do_day=-1)
+		
+		RETURN mat_na
+		END FUNCTION
+	\end{lstlisting}
+	
+	\subsubsection{Lọc chặn dải (Band-stop Filter)}
+	\textbf{Mục đích:} Loại bỏ một dải tần số trung bình, hữu ích cho việc loại bỏ nhiễu có quy luật.
+	\begin{lstlisting}[language=Python, caption={Mã giả tạo mặt nạ Lọc chặn dải.}, label={lst:bsf}]
+		FUNCTION tao_mat_na_chan_dai(chieu_cao, chieu_rong, bk_trong, bk_ngoai):
+		// Tao mot mat na trang (toan so 1)
+		mat_na = tao_ma_tran_trang(chieu_cao, chieu_rong)
+		
+		// Tim toa do trung tam
+		tam_x = chieu_rong / 2
+		tam_y = chieu_cao / 2
+		
+		// Ve mot hinh tron den lon ben ngoai
+		ve_hinh_tron(mat_na, tam_x, tam_y, bk_ngoai, mau_sac=0, do_day=-1)
+		
+		// Ve mot hinh tron trang nho hon ben trong de tao thanh vanh khan
+		ve_hinh_tron(mat_na, tam_x, tam_y, bk_trong, mau_sac=1, do_day=-1)
+		
+		RETURN mat_na
+		END FUNCTION
+	\end{lstlisting}
+	
+	% --- SECTION 3: THỰC NGHIỆM VÀ KẾT QUẢ ---
+	\section{Thực nghiệm và Kết quả}
+	\subsection{Mô tả thực nghiệm}
+	Em đã viết 3 file Python dựa trên bộ công cụ được cung cấp bởi Plötz và Roth \cite{plotz2017benchmark}: \texttt{run\_denoising.py}, \texttt{generate\_full\_report.py}, và \texttt{create\_report.py}. 
+	
+	\subsection{Phân tích kết quả trực quan}
+	Toàn bộ 1000 vùng ảnh trong bộ dữ liệu đã được xử lý. Để trình bày kết quả một cách đầy đủ, các hình ảnh so sánh được tạo tự động và gộp thành nhiều trang. 
+	
+	% !!! LƯU Ý !!!
+	% Hãy thay đổi số 200 bên dưới thành số file ảnh báo cáo mà bạn đã tạo ra.
+	\foreach \n in {1,...,5}{
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\textwidth]{"F:/Report_Full_Page_\n.png"}
+			\caption{Bảng so sánh trực quan hiệu quả của các bộ lọc Fourier - Trang \n.}
+			\label{fig:report_page_\n}
+		\end{figure}
+		\clearpage 
+	}
+	
+	\textbf{Nhận xét chi tiết:}
+	\begin{itemize}
+		\item \textbf{Ảnh Gốc:} Chứa nhiễu hạt rõ rệt, đặc biệt ở các vùng tối.
+		
+		\item \textbf{Lọc thông thấp (Low-Pass):} Khử nhiễu hiệu quả nhất, làm bề mặt trở nên mịn màng. Tuy nhiên, cái giá phải trả là hiện tượng \textbf{làm mịn quá mức (over-smoothing)}, khiến các chi tiết quan trọng bị xóa mờ. Bộ lọc này giữ lại thành phần DC nên ảnh vẫn giữ được độ sáng tổng thể.
+		
+		\item \textbf{Lọc thông cao (High-Pass):} Kết quả thu được là một ảnh gần như tối đen, chỉ làm nổi bật các cạnh và các điểm nhiễu. Điều này xảy ra vì bộ lọc đã loại bỏ hoàn toàn thành phần DC (độ sáng trung bình) của ảnh. Do đó, nó hoạt động như một \textbf{bộ phát hiện cạnh (edge detector)} chứ không phải bộ lọc khử nhiễu.
+		
+		\item \textbf{Lọc thông dải (Band-Pass):} Tương tự như Lọc thông cao, kết quả của bộ lọc này cũng là một ảnh rất tối. Lý do là vì nó cũng loại bỏ thành phần DC. Thay vì giữ lại các cạnh sắc nét nhất, nó giữ lại các \textbf{kết cấu (texture)} có kích thước tương ứng với dải tần được cho qua.
+		
+		\item \textbf{Lọc chặn dải (Band-Stop):} Bộ lọc này giữ lại được cấu trúc tổng thể của ảnh (vì nó giữ lại thành phần DC). Nó được thiết kế để loại bỏ các nhiễu có quy luật (periodic noise) chứ không hiệu quả với nhiễu hạt ngẫu nhiên.
+	\end{itemize}
+	
+	\subsection{Đánh giá định lượng}
+	Để đánh giá hiệu quả của các bộ lọc một cách khách quan, em đã sử dụng hai chỉ số đo lường độ sai khác giữa ảnh gốc và ảnh sau xử lý là PSNR và SSIM.
+	
+	\subsubsection{Giải thích các chỉ số đo lường}
+	\textbf{PSNR (Peak Signal-to-Noise Ratio - Tỷ số tín hiệu trên nhiễu đỉnh):} Đây là chỉ số phổ biến nhất để đo lường chất lượng của ảnh tái tạo so với ảnh gốc. PSNR được tính dựa trên Sai số toàn phương trung bình (MSE) giữa hai ảnh. Về cơ bản, nó đo lường sự khác biệt về giá trị cường độ sáng trên từng pixel.
+	\begin{itemize}
+		\item Đơn vị tính là decibel (dB).
+		\item \textbf{PSNR càng cao, ảnh sau xử lý càng giống với ảnh gốc về mặt giá trị pixel.}
+	\end{itemize}
+	
+	\textbf{SSIM (Structural Similarity Index - Chỉ số tương đồng cấu trúc):} Chỉ số SSIM được xem là một phép đo tiên tiến hơn vì nó gần với cách cảm nhận của mắt người hơn. Thay vì chỉ so sánh từng pixel, SSIM so sánh sự tương đồng về \textbf{cấu trúc, độ sáng, và độ tương phản} giữa các vùng ảnh.
+	\begin{itemize}
+		\item Giá trị nằm trong khoảng từ -1 đến 1.
+		\item \textbf{SSIM càng gần 1, hai ảnh càng giống nhau về mặt cấu trúc mà mắt người có thể cảm nhận được.}
+	\end{itemize}
+	
+	\subsubsection{Phân tích kết quả}
+	Do bộ dữ liệu DND không cung cấp ảnh gốc không nhiễu (ground truth), các chỉ số được tính bằng cách so sánh ảnh đã xử lý với ảnh gốc bị nhiễu. Mục đích của phép đo này là để xem mức độ thay đổi mà mỗi bộ lọc gây ra.
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.8\textwidth]{"F:/metrics_comparison_img1_box5.png"}
+		\caption{Biểu đồ so sánh chỉ số PSNR và SSIM cho một vùng ảnh mẫu.}
+		\label{fig:metrics_chart}
+	\end{figure}
+	
+\textbf{Diễn giải biểu đồ:}
+\begin{itemize}
+	\item \textbf{Lọc thông thấp} có chỉ số PSNR và SSIM thấp. Điều này hoàn tothấpàn hợp lý, vì nó là bộ lọc \textbf{thay đổi cấu trúc ảnh nhiều nhất} bằng cách làm mờ đi các chi tiết. Điểm SSIM thấp cho thấy cấu trúc của ảnh sau khi lọc đã khác biệt đáng kể so với ảnh gốc bị nhiễu.
+	
+	\item \textbf{Lọc thông cao} cũng có các chỉ số thấp vì nó loại bỏ toàn bộ phần nền của ảnh, tạo ra một sự thay đổi cấu trúc rất lớn.
+	
+	\item \textbf{Lọc chặn dải} có chỉ số SSIM \textbf{cao nhất} (gần bằng 1). Điều này có nghĩa là nó gần như không làm thay đổi cấu trúc tổng thể của ảnh, phù hợp với quan sát trực quan là hiệu ứng của nó không rõ rệt.
+\end{itemize}
+Tóm lại, phân tích định lượng đã xác nhận các quan sát trực quan: bộ lọc thông thấp là phương pháp duy nhất có tác dụng khử nhiễu rõ ràng, và điều này được thực hiện bằng cách thay đổi mạnh mẽ cấu trúc tần số cao của ảnh.
+	% --- SECTION 4: KẾT LUẬN ---
+	\section{Kết luận}
+	Qua bài tập này, em đã hiểu rõ hơn về nguyên lý hoạt động và cách hiện thực hóa các bộ lọc ảnh trong miền tần số bằng Biến đổi Fourier.
+	\begin{itemize}
+		\item \textbf{Ưu điểm:} Phương pháp này khá đơn giản, trực quan và hiệu quả để làm mờ hoặc làm sắc nét ảnh.
+		\item \textbf{Nhược điểm:} Hạn chế lớn nhất là sự đánh đổi. Bộ lọc thông thấp khử nhiễu tốt nhưng lại làm mất chi tiết vì nó không thể phân biệt được đâu là nhiễu và đâu là chi tiết ảnh.
+	\end{itemize}
+	Để có kết quả khử nhiễu tốt hơn, cần phải sử dụng các thuật toán phức tạp hơn như Lọc Wavelet, BM3D hoặc các mô hình Deep Learning. Tuy nhiên, việc tìm hiểu về lọc Fourier là một bước nền tảng quan trọng để tiếp cận các kỹ thuật nâng cao này.
+	
+	% --- TÀI LIỆU THAM KHẢO ---
+	
+
+	\begin{thebibliography}{9}
+		\bibitem{plotz2017benchmark}
+		T. Plötz and S. Roth,
+		``Benchmarking Denoising Algorithms with Real Photographs,''
+		\textit{in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2017.
+		
+		\bibitem{gonzalez2018digital}
+		R. C. Gonzalez and R. E. Woods,
+		\textit{Digital Image Processing}, 4th ed.
+		Pearson, 2018.
+	\end{thebibliography}
+	
+	
+% --- PHỤ LỤC ---
+\appendix
+\section{Phụ lục A: Hướng dẫn sử dụng và Mã nguồn}
+\subsection{Hướng dẫn cài đặt và chạy chương trình}
+\begin{enumerate}
+	\item \textbf{Cài đặt thư viện:}
+	\begin{lstlisting}[language=bash]
+		pip install numpy scipy h5py opencv-python matplotlib scikit-image
+	\end{lstlisting}
+	\item \textbf{Chuẩn bị dữ liệu:} Tải bộ dữ liệu DND sRGB và giải nén vào.
+	\item \textbf{Chạy xử lý (một lần):} Chạy file \texttt{run\_denoising.py}.
+	\item \textbf{Chạy tạo báo cáo tổng thể:} Chạy file \texttt{generate\_full\_report.py}.
+	\item \textbf{Chạy tạo báo cáo tùy chọn:} Chạy file \texttt{create\_report.py} (đã đổi tên từ \texttt{visualize\_4\_examples.py}) để xem các ví dụ cụ thể và biểu đồ.
+\end{enumerate}
+
+\subsection{Mã nguồn}
+\subsubsection{File \texttt{run\_denoising.py}}
+\begin{lstlisting}[language=Python, caption={Mã nguồn xử lý và khử nhiễu ảnh.}, label={lst:run_denoising}]
+	# === run_denoising.py ===
+	# MUC DICH: Chay qua trinh khu nhieu va luu ket qua. Chi can chay file nay mot lan.
+	
+	import numpy as np
+	import scipy.io as sio
+	import os
+	import h5py
+	import cv2
+	
+	# --- CAC HAM KHU NHIEU VOI CAC KIEU LOC FOURIER ---
+	
+	def apply_fourier_filter(noisy_patch, mask):
+	"""Ham loi de ap dung mot mat na Fourier cho anh."""
+	rows, cols, channels = noisy_patch.shape
+	denoised_patch = np.zeros_like(noisy_patch, dtype=np.float32)
+	
+	for i in range(channels):
+	channel_noisy = noisy_patch[:, :, i]
+	f = np.fft.fft2(channel_noisy)
+	fshift = np.fft.fftshift(f)
+	fshift_filtered = fshift * mask
+	f_ishift = np.fft.ifftshift(fshift_filtered)
+	channel_denoised = np.fft.ifft2(f_ishift)
+	denoised_patch[:, :, i] = np.abs(channel_denoised)
+	
+	return denoised_patch
+	
+	def low_pass_denoiser(noisy_patch, noise_info):
+	"""Loc thong thap: Giu tan so thap, loai bo tan so cao -> Lam mo, khu nhieu."""
+	rows, cols, _ = noisy_patch.shape
+	crow, ccol = int(rows / 2), int(cols / 2)
+	radius = 40
+	mask = np.zeros((rows, cols), np.uint8)
+	cv2.circle(mask, (ccol, crow), radius, 1, thickness=-1)
+	return apply_fourier_filter(noisy_patch, mask)
+	
+	def high_pass_denoiser(noisy_patch, noise_info):
+	"""Loc thong cao: Giu tan so cao, loai bo tan so thap -> Lam sac net, phat hien canh."""
+	rows, cols, _ = noisy_patch.shape
+	crow, ccol = int(rows / 2), int(cols / 2)
+	radius = 40
+	mask = np.ones((rows, cols), np.uint8)
+	cv2.circle(mask, (ccol, crow), radius, 0, thickness=-1)
+	return apply_fourier_filter(noisy_patch, mask)
+	
+	def band_pass_denoiser(noisy_patch, noise_info):
+	"""Loc thong dai: Giu mot dai tan so o giua -> Tim kiem hoa van."""
+	rows, cols, _ = noisy_patch.shape
+	crow, ccol = int(rows / 2), int(cols / 2)
+	r_outer = 80
+	r_inner = 20
+	mask = np.zeros((rows, cols), np.uint8)
+	cv2.circle(mask, (ccol, crow), r_outer, 1, thickness=-1)
+	cv2.circle(mask, (ccol, crow), r_inner, 0, thickness=-1)
+	return apply_fourier_filter(noisy_patch, mask)
+	
+	def band_stop_denoiser(noisy_patch, noise_info):
+	"""Loc chan dai: Loai bo mot dai tan so o giua -> Loai bo nhieu co quy luat."""
+	rows, cols, _ = noisy_patch.shape
+	crow, ccol = int(rows / 2), int(cols / 2)
+	r_outer = 80
+	r_inner = 20
+	mask = np.ones((rows, cols), np.uint8)
+	cv2.circle(mask, (ccol, crow), r_outer, 0, thickness=-1)
+	cv2.circle(mask, (ccol, crow), r_inner, 1, thickness=-1)
+	return apply_fourier_filter(noisy_patch, mask)
+	
+	
+	# --- BO KHUNG DANH GIA TU BAI BAO ---
+	def load_nlf(info, img_id):
+	nlf = {}
+	nlf_h5 = info[info["nlf"][0][img_id]]
+	nlf["a"] = nlf_h5["a"][0][0]
+	nlf["b"] = nlf_h5["b"][0][0]
+	return nlf
+	
+	def load_sigma_srgb(info, img_id, bb):
+	nlf_h5 = info[info["sigma_srgb"][0][img_id]]
+	sigma = nlf_h5[0,bb]
+	return sigma
+	
+	def denoise_srgb(denoiser, data_folder, out_folder):
+	if not os.path.exists(out_folder):
+	os.makedirs(out_folder)
+	print(f'Bat dau qua trinh cho thu muc: {out_folder}')
+	infos = h5py.File(os.path.join(data_folder, 'info.mat'), 'r')
+	info = infos['info']
+	bb = info['boundingboxes']
+	print('Tai file info.mat thanh cong.\n')
+	for i in range(50):
+	filename = os.path.join(data_folder, 'images_srgb', '%04d.mat'%(i+1))
+	img = h5py.File(filename, 'r')
+	Inoisy = np.float32(np.array(img['InoisySRGB']).T)
+	ref = bb[0][i]
+	boxes = np.array(info[ref]).T
+	for k in range(20):
+	idx = [int(boxes[k,0]-1), int(boxes[k,2]), int(boxes[k,1]-1), int(boxes[k,3])]
+	Inoisy_crop = Inoisy[idx[0]:idx[1], idx[2]:idx[3], :].copy()
+	nlf = load_nlf(info, i)
+	nlf["sigma"] = load_sigma_srgb(info, i, k)
+	Idenoised_crop = denoiser(Inoisy_crop, nlf)
+	save_file = os.path.join(out_folder, '%04d_%02d.mat'%(i+1, k+1))
+	sio.savemat(save_file, {'Idenoised_crop': Idenoised_crop})
+	print(f'--- HOAN THANH ANH {i+1:02d}/50 ---')
+	print(f'*** Qua trinh cho {out_folder} hoan tat! ***\n')
+	
+	# --- THUC THI QUA TRINH KHU NHIEU ---
+	if __name__ == '__main__':
+	data_folder = r'F:\dnd_2017' 
+	
+	filters_to_run = {
+		'Low-Pass Filter': (low_pass_denoiser, r'F:\output_low_pass'),
+		'High-Pass Filter': (high_pass_denoiser, r'F:\output_high_pass'),
+		'Band-Pass Filter': (band_pass_denoiser, r'F:\output_band_pass'),
+		'Band-Stop Filter': (band_stop_denoiser, r'F:\output_band_stop')
+	}
+	
+	if not os.path.isdir(data_folder) or not os.path.exists(os.path.join(data_folder, 'info.mat')):
+	print(f"LOI: Khong tim thay thu muc du lieu '{data_folder}' hoac file 'info.mat' ben trong.")
+	else:
+	# Chay qua trinh khu nhieu cho tung bo loc
+	for name, (denoiser_func, out_folder) in filters_to_run.items():
+	denoise_srgb(denoiser_func, data_folder, out_folder)
+	
+	print("!!! DA XU LY VA LUU KET QUA CUA TAT CA CAC BO LOC !!!")
+\end{lstlisting}
+
+\subsubsection{File \texttt{generate\_full\_report.py}}
+\begin{lstlisting}[language=Python, caption={Mã nguồn tạo chuỗi ảnh báo cáo tổng hợp.}, label={lst:generate_full_report}]
+	# === generate_full_report.py ===
+	# MUC DICH: Tu dong tao mot chuoi cac file anh so sanh truc quan cho TAT CA cac ket qua
+	# da duoc xu ly, phu hop de lam bao cao tong the.
+	
+	import numpy as np
+	import scipy.io as sio
+	import os
+	import h5py
+	import matplotlib.pyplot as plt
+	
+	# --- HAM TIEN ICH DE TAI ANH GOC ---
+	def get_noisy_patch(data_folder, img_id, box_id):
+	"""Ham phu de tai mot vung anh nhieu goc tu bo du lieu."""
+	if 'info_file' not in get_noisy_patch.__dict__:
+	get_noisy_patch.info_file = h5py.File(os.path.join(data_folder, 'info.mat'), 'r')
+	
+	info = get_noisy_patch.info_file['info']
+	bb = info['boundingboxes']
+	
+	filename_original = os.path.join(data_folder, 'images_srgb', f'{img_id:04d}.mat')
+	with h5py.File(filename_original, 'r') as img_original_h5:
+	Inoisy_full = np.float32(np.array(img_original_h5['InoisySRGB']).T)
+	
+	ref = bb[0][img_id-1]
+	boxes = np.array(info[ref]).T
+	idx = [int(boxes[box_id-1,0]-1), int(boxes[box_id-1,2]), int(boxes[box_id-1,1]-1), int(boxes[box_id-1,3])]
+	noisy_patch = Inoisy_full[idx[0]:idx[1], idx[2]:idx[3], :].copy()
+	return np.clip(noisy_patch, 0, 1)
+	
+	
+	# --- HAM CHINH DE TAO VISUALIZATION ---
+	def generate_all_visual_reports(data_folder, filter_outputs, patches_per_figure=5):
+	"""Duyet qua toan bo dataset va tao cac file anh so sanh theo lo."""
+	print("Bat dau qua trinh tao chuoi anh bao cao cho toan bo dataset...")
+	
+	num_images = 50
+	num_boxes_per_image = 20
+	
+	col_titles = ['Anh Goc'] + list(filter_outputs.keys())
+	num_cols = len(col_titles)
+	
+	patch_counter = 0
+	file_counter = 1
+	
+	fig, axes = None, None
+	
+	for img_id in range(1, num_images + 1):
+	for box_id in range(1, num_boxes_per_image + 1):
+	
+	if patch_counter % patches_per_figure == 0:
+	if fig is not None:
+	save_path = os.path.join('F:\\', f'Report_Full_Page_{file_counter}.png')
+	print(f"Dang luu file: {save_path}")
+	fig.tight_layout(rect=[0, 0, 1, 0.97])
+	fig.savefig(save_path, bbox_inches='tight', dpi=150)
+	plt.close(fig)
+	file_counter += 1
+	
+	fig, axes = plt.subplots(patches_per_figure, num_cols, 
+	figsize=(num_cols * 4, patches_per_figure * 4))
+	fig.suptitle(f'So sanh ket qua bo loc - Trang {file_counter}', fontsize=24)
+	
+	for ax, col_title in zip(axes[0], col_titles):
+	ax.set_title(col_title, fontsize=16, pad=15)
+	
+	current_row_in_figure = patch_counter % patches_per_figure
+	row_axes = axes[current_row_in_figure, :]
+	
+	noisy_patch = get_noisy_patch(data_folder, img_id, box_id)
+	row_axes[0].imshow(noisy_patch)
+	row_axes[0].axis('off')
+	row_axes[0].text(-0.1, 0.5, f'Anh {img_id}\nVung {box_id}', 
+	transform=row_axes[0].transAxes, ha="right", va="center", 
+	fontsize=14, rotation=90)
+	
+	for i, (name, folder) in enumerate(filter_outputs.items()):
+	ax = row_axes[i + 1]
+	filepath = os.path.join(folder, f'{img_id:04d}_{box_id:02d}.mat')
+	if os.path.exists(filepath):
+	denoised_data = sio.loadmat(filepath)
+	denoised_crop = np.clip(denoised_data['Idenoised_crop'], 0, 1)
+	ax.imshow(denoised_crop)
+	else:
+	ax.text(0.5, 0.5, 'File not found', ha='center', va='center')
+	ax.axis('off')
+	
+	patch_counter += 1
+	print(f"Da xu ly: Anh {img_id}/{num_images}, Vung {box_id}/{num_boxes_per_image}")
+	
+	if fig is not None:
+	remaining_patches = patch_counter % patches_per_figure
+	if remaining_patches > 0:
+	for i in range(remaining_patches, patches_per_figure):
+	for j in range(num_cols):
+	fig.delaxes(axes[i][j])
+	
+	save_path = os.path.join('F:\\', f'Report_Full_Page_{file_counter}.png')
+	print(f"Dang luu file cuoi cung: {save_path}")
+	fig.tight_layout(rect=[0, 0, 1, 0.97])
+	fig.savefig(save_path, bbox_inches='tight', dpi=150)
+	plt.close(fig)
+	
+	if 'info_file' in get_noisy_patch.__dict__:
+	get_noisy_patch.info_file.close()
+	del get_noisy_patch.info_file
+	
+	print("\n!!! HOAN TAT VIEC TAO TAT CA CAC ANH BAO CAO !!!")
+	
+	
+	# --- THUC THI TAO BAO CAO ---
+	if __name__ == '__main__':
+	data_folder = r'F:\dnd_2017'
+	
+	output_folders = {
+		'Low-Pass': r'F:\output_low_pass',
+		'High-Pass': r'F:\output_high_pass',
+		'Band-Pass': r'F:\output_band_pass',
+		'Band-Stop': r'F:\output_band_stop'
+	}
+	
+	all_folders_exist = True
+	for folder in output_folders.values():
+	if not os.path.isdir(folder):
+	print(f"LOI: Thu muc ket qua '{folder}' khong ton tai. Vui long chay file 'run_denoising.py' truoc.")
+	all_folders_exist = False
+	break
+	
+	if all_folders_exist:
+	generate_all_visual_reports(data_folder, output_folders, patches_per_figure=5)
+\end{lstlisting}
+
+\subsubsection{File \texttt{create\_report.py}}
+\begin{lstlisting}[language=Python, caption={Mã nguồn tạo báo cáo tùy chọn và biểu đồ.}, label={lst:create_report}]
+	# === create_report.py ===
+	# MUC DICH: Tai cac ket qua da khu nhieu de tao visualization va bieu do so sanh.
+	# Ban co the chay file nay nhieu lan ma khong can xu ly lai anh.
+	
+	import numpy as np
+	import scipy.io as sio
+	import os
+	import h5py
+	import matplotlib.pyplot as plt
+	from skimage.metrics import peak_signal_noise_ratio as psnr
+	from skimage.metrics import structural_similarity as ssim
+	
+	# --- CAC HAM DANH GIA VA SO SANH ---
+	def get_noisy_patch(data_folder, img_id, box_id):
+	"""Ham phu de tai mot vung anh nhieu goc tu bo du lieu."""
+	if 'info_file' not in get_noisy_patch.__dict__:
+	get_noisy_patch.info_file = h5py.File(os.path.join(data_folder, 'info.mat'), 'r')
+	
+	info = get_noisy_patch.info_file['info']
+	bb = info['boundingboxes']
+	
+	filename_original = os.path.join(data_folder, 'images_srgb', f'{img_id:04d}.mat')
+	with h5py.File(filename_original, 'r') as img_original_h5:
+	Inoisy_full = np.float32(np.array(img_original_h5['InoisySRGB']).T)
+	
+	ref = bb[0][img_id-1]
+	boxes = np.array(info[ref]).T
+	idx = [int(boxes[box_id-1,0]-1), int(boxes[box_id-1,2]), int(boxes[box_id-1,1]-1), int(boxes[box_id-1,3])]
+	noisy_patch = Inoisy_full[idx[0]:idx[1], idx[2]:idx[3], :].copy()
+	return np.clip(noisy_patch, 0, 1)
+	
+	def evaluate_and_plot_metrics(data_folder, filter_outputs, img_id, box_id):
+	"""Tinh toan, ve va luu bieu do so sanh PSNR/SSIM."""
+	print(f"\nDang tinh toan va ve bieu do cho anh {img_id}, vung {box_id}...")
+	
+	reference_patch = get_noisy_patch(data_folder, img_id, box_id)
+	filter_names = list(filter_outputs.keys())
+	psnr_scores, ssim_scores = [], []
+	
+	for name, folder in filter_outputs.items():
+	filepath = os.path.join(folder, f'{img_id:04d}_{box_id:02d}.mat')
+	if os.path.exists(filepath):
+	denoised_data = sio.loadmat(filepath)
+	denoised_patch = np.clip(denoised_data['Idenoised_crop'], 0, 1)
+	psnr_val = psnr(reference_patch, denoised_patch, data_range=1)
+	ssim_val = ssim(reference_patch, denoised_patch, data_range=1, channel_axis=2, win_size=7)
+	psnr_scores.append(psnr_val)
+	ssim_scores.append(ssim_val)
+	else:
+	psnr_scores.append(0)
+	ssim_scores.append(0)
+	
+	x = np.arange(len(filter_names))
+	width = 0.35
+	fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+	fig.suptitle(f'So sanh cac bo loc cho Anh {img_id} - Vung {box_id}\n(So voi anh goc bi nhieu)', fontsize=16)
+	
+	ax1.bar(x, psnr_scores, width, label='PSNR', color='skyblue')
+	ax1.set_ylabel('PSNR (dB)'); ax1.set_title('Ty so tin hieu tren nhieu dinh (PSNR)'); ax1.set_xticks(x); ax1.set_xticklabels(filter_names); ax1.legend()
+	ax2.bar(x, ssim_scores, width, label='SSIM', color='salmon')
+	ax2.set_ylabel('SSIM'); ax2.set_title('Chi so tuong dong cau truc (SSIM)'); ax2.set_xticks(x); ax2.set_xticklabels(filter_names); ax2.legend(); ax2.set_ylim(0, 1)
+	
+	fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+	chart_filename = os.path.join('F:\\', f'metrics_comparison_img{img_id}_box{box_id}.png')
+	plt.savefig(chart_filename)
+	print(f"Da luu bieu do so sanh vao file: {chart_filename}")
+	plt.show()
+	
+	def create_report_visualization(data_folder, filter_outputs, examples_to_show, save_path):
+	"""Tao mot anh grid duy nhat so sanh ket qua cua cac vung anh duoc chon."""
+	print("\nDang tao visualization tong hop cho bao cao...")
+	
+	num_rows = len(examples_to_show)
+	col_titles = ['Anh Goc'] + list(filter_outputs.keys())
+	num_cols = len(col_titles)
+	
+	fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_cols * 4, num_rows * 4))
+	fig.suptitle('Tong hop ket qua cac bo loc Fourier', fontsize=24, y=1.0)
+	
+	axes_for_titles = axes[0] if num_rows > 1 else axes
+	for ax, col_title in zip(axes_for_titles, col_titles):
+	ax.set_title(col_title, fontsize=16, pad=20)
+	
+	for current_row, (img_id, box_id) in enumerate(examples_to_show):
+	row_axes = axes[current_row, :] if num_rows > 1 else axes
+	
+	noisy_patch = get_noisy_patch(data_folder, img_id, box_id)
+	row_axes[0].imshow(noisy_patch)
+	row_axes[0].axis('off')
+	row_axes[0].text(-0.1, 0.5, f'Anh {img_id}\nVung {box_id}', 
+	transform=row_axes[0].transAxes, ha="right", va="center", 
+	fontsize=14, rotation=90)
+	
+	for i, (name, folder) in enumerate(filter_outputs.items()):
+	ax = row_axes[i + 1]
+	filepath = os.path.join(folder, f'{img_id:04d}_{box_id:02d}.mat')
+	if os.path.exists(filepath):
+	denoised_data = sio.loadmat(filepath)
+	denoised_crop = np.clip(denoised_data['Idenoised_crop'], 0, 1)
+	ax.imshow(denoised_crop)
+	else:
+	ax.text(0.5, 0.5, 'File not found', ha='center', va='center')
+	ax.axis('off')
+	
+	plt.tight_layout(rect=[0, 0, 1, 0.98])
+	plt.savefig(save_path, bbox_inches='tight', dpi=150)
+	print(f"Da luu anh tong hop bao cao vao: {save_path}")
+	plt.close(fig)
+	
+	if 'info_file' in get_noisy_patch.__dict__:
+	get_noisy_patch.info_file.close()
+	del get_noisy_patch.info_file
+	
+	# --- THUC THI TAO BAO CAO ---
+	if __name__ == '__main__':
+	data_folder = r'F:\dnd_2017'
+	
+	output_folders = {
+		'Low-Pass': r'F:\output_low_pass',
+		'High-Pass': r'F:\output_high_pass',
+		'Band-Pass': r'F:\output_band_pass',
+		'Band-Stop': r'F:\output_band_stop'
+	}
+	
+	all_folders_exist = True
+	for folder in output_folders.values():
+	if not os.path.isdir(folder):
+	print(f"LOI: Thu muc ket qua '{folder}' khong ton tai. Vui long chay file 'run_denoising.py' truoc.")
+	all_folders_exist = False
+	break
+	
+	if all_folders_exist:
+	print("Tat ca cac thu muc ket qua da ton tai. Bat dau tao bao cao...")
+	
+	# 1. Ve bieu do cho mot vi du
+	evaluate_and_plot_metrics(data_folder, output_folders, img_id=1, box_id=5)
+	
+	# 2. Tao anh bao cao tuy chon voi 4 vi du
+	examples_to_show = [
+	(1, 5), (7, 12), (25, 3), (42, 18)
+	]
+	report_save_path = r'F:\Fourier_Filters_Report_4_Examples.png'
+	create_report_visualization(data_folder, 
+	output_folders, 
+	examples_to_show, 
+	report_save_path)
+\end{lstlisting}\\
+
+	
+\end{document}

@@ -1,0 +1,86 @@
+
+---
+
+## .gitignore
+
+```gitignore
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyf
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.build/
+dist/
+build/
+.cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.conda/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Data & Outputs ---
+# DND dataset (do not commit large datasets)
+dnd_2017/
+data/
+datasets/
+**/images_srgb/
+**/info.mat
+
+# Generated results and figures
+outputs/
+**/output_low_pass/
+**/output_high_pass/
+**/output_band_pass/
+**/output_band_stop/
+Report_Full_Page_*.png
+Fourier_Filters_Report_*.png
+metrics_comparison_img*_box*.png
+
+# MATLAB / HDF artifacts
+*.mat
+*.h5
+*.hdf5
+
+# Logs / temp
+*.log
+*.tmp
+tmp/
+temp/
+~$*
+
+# --- LaTeX build artifacts ---
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.pdf
+
+# PDFs (optional: keep if you want to version final PDFs)
+#*.pdf
